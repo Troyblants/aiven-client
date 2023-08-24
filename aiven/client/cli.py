@@ -5666,6 +5666,64 @@ server_encryption_options:
             ),
         )
 
+    @arg.project
+    @arg.service_name
+    def service__custom_file__list(self) -> None:
+        """List all the custom files for the specified service"""
+        self.print_response(
+            self.client.custom_file_list(
+                project=self.args.project,
+                service=self.args.service_name,
+            ),
+        )
+
+    @arg.project
+    @arg.service_name
+    @arg("--file_id", help="A file ID, usually an uuid4 string", required=True)
+    def service__custom_file__get(self) -> None:
+        """View the custom file for the specified service and ID"""
+        print(
+            self.client.custom_file_get(
+                project=self.args.project,
+                service=self.args.service_name,
+                file_id=self.args.file_id,
+            ),
+        )
+
+    @arg.project
+    @arg.service_name
+    @arg("--file_path", help="A path to the file", required=True)
+    @arg("--file_type", choices=["synonyms", "stopwords", "wordnet"], required=True)
+    @arg("--file_name", help="A name for the file", required=True)
+    def service__custom_file__upload(self) -> None:
+        """Upload custom file for the specified service"""
+        with open(self.args.file_path, "rb") as f:
+            self.print_response(
+                self.client.custom_file_upload(
+                    project=self.args.project,
+                    service=self.args.service_name,
+                    file_type=self.args.file_type,
+                    file_name=self.args.file_name,
+                    file_object=f,
+                ),
+            )
+
+    @arg.project
+    @arg.service_name
+    @arg("--file_path", help="A path to the file", required=True)
+    @arg("--file_id", help="A file ID, usually an uuid4 string", required=True)
+    def service__custom_file__update(self) -> None:
+        """Update custom file for the specified service and ID"""
+        with open(self.args.file_path, "rb") as f:
+            self.print_response(
+                self.client.custom_file_update(
+                    project=self.args.project,
+                    service=self.args.service_name,
+                    file_id=self.args.file_id,
+                    file_object=f,
+                ),
+            )
+
     @arg.json
     @arg("name", help="Name of the organization to create")
     @arg.force

@@ -7,8 +7,9 @@ from __future__ import annotations
 from .common import UNDEFINED
 from .session import get_requests_session
 from http import HTTPStatus
-from requests import Response
-from typing import Any, Callable, Collection, Mapping, Sequence, TypedDict
+from requests import JSONDecodeError, Response
+from requests_toolbelt import MultipartEncoder  # type: ignore
+from typing import Any, BinaryIO, Callable, Collection, Mapping, Sequence, TypedDict
 from urllib.parse import quote
 
 import json
@@ -79,6 +80,10 @@ class AivenClientBase:
             headers["content-type"] = "application/json"
             data = json.dumps(body)
             log_data = json.dumps(body, sort_keys=True, indent=4)
+        elif isinstance(body, MultipartEncoder):
+            headers["content-type"] = body.content_type
+            data = body
+            log_data = data
         else:
             headers["content-type"] = "application/octet-stream"
             data = body
@@ -178,7 +183,11 @@ class AivenClientBase:
         if response.status_code == HTTPStatus.NO_CONTENT or response.headers.get("Content-Length", "0") == "0":
             return {}
 
-        result = response.json()
+        try:
+            result = response.json()
+        except JSONDecodeError:
+            return response.text
+
         if result.get("error"):
             raise ResponseError(
                 "server returned error: {op} {base_url}{path} {result}".format(
@@ -2206,6 +2215,54 @@ class AivenClient(AivenClientBase):
     def clickhouse_database_list(self, project: str, service: str) -> Mapping:
         path = self.build_path("project", project, "service", service, "clickhouse", "db")
         return self.verify(self.get, path, result_key="databases")
+
+    def custom_file_list(self, project: str, service: str) -> Mapping:
+        path = self.build_path("project", project, "service", service, "file")
+        return self.verify(self.get, path)
+
+    def custom_file_get(self, project: str, service: str, file_id: str) -> str:
+        path = self.build_path("project", project, "service", service, "file", file_id)
+        return self.verify(self.get, path)
+
+    def custom_file_upload(
+        self,
+        project: str,
+        service: str,
+        file_type: str,
+        file_object: BinaryIO,
+        file_name: str,
+        update: bool = False,
+    ) -> Mapping:
+        path = self.build_path("project", project, "service", service, "file")
+        return self.verify(
+            self.post,
+            path,
+            body=MultipartEncoder(
+                fields={
+                    "file": (file_name, file_object, "application/octet-stream"),
+                    "filetype": file_type,
+                    "filename": file_name,
+                }
+            ),
+        )
+
+    def custom_file_update(
+        self,
+        project: str,
+        service: str,
+        file_object: BinaryIO,
+        file_id: str,
+    ) -> Mapping:
+        path = self.build_path("project", project, "service", service, "file", file_id)
+        return self.verify(
+            self.put,
+            path,
+            body=MultipartEncoder(
+                fields={
+                    "file": (file_id, file_object, "application/octet-stream"),
+                }
+            ),
+        )
 
     def flink_list_applications(
         self,
