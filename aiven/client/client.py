@@ -179,6 +179,19 @@ class AivenClientBase:
                 )
                 time.sleep(0.2)
 
+        return self._process_response(response=response, op=op, path=path, result_key=result_key)
+
+    @staticmethod
+    def build_path(*parts: str) -> str:
+        return "/" + "/".join(quote(part, safe="") for part in parts)
+
+    def _process_response(
+        self,
+        response: Response,
+        op: Callable[..., Response],
+        path: str,
+        result_key: str | None = None,
+    ) -> Mapping | str:
         # Check API is actually returning data or not
         if response.status_code == HTTPStatus.NO_CONTENT or response.headers.get("Content-Length", "0") == "0":
             return {}
@@ -198,10 +211,6 @@ class AivenClientBase:
         if result_key is not None:
             return result[result_key]
         return result
-
-    @staticmethod
-    def build_path(*parts: str) -> str:
-        return "/" + "/".join(quote(part, safe="") for part in parts)
 
 
 class AivenClient(AivenClientBase):
